@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PlainCast</string>
+    <string name="plaincast_channel_name">PlainCast active room</string>
+    <string name="plaincast_channel_description">Shows when a local PlainCast room or capture is active.</string>
+</resources>
