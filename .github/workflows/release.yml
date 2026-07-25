@@ -139,11 +139,11 @@ jobs:
           test "${#assets[@]}" -eq 3
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
-            gh release edit "$RELEASE_TAG" --title "PlainCast ${RELEASE_TAG#v}" --notes-file RELEASE_NOTES.md --latest
+            gh release edit "$RELEASE_TAG" --title "PlainCast ${RELEASE_TAG#v}" --latest
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" \
               --target "$GITHUB_SHA" \
               --title "PlainCast ${RELEASE_TAG#v}" \
-              --notes-file RELEASE_NOTES.md \
+              --generate-notes \
               --latest
           fi

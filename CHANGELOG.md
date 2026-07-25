@@ -6,7 +6,6 @@
 
 - Supplied PlainCast logo across Android launcher, adaptive, themed, notification, browser, and PWA assets.
 - Signed GitHub release workflow publishing debug and release APKs plus SHA-256 checksums.
-- Release setup, privacy, security, and final verification documentation.
 
 ### Changed
 

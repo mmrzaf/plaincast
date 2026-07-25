@@ -58,7 +58,9 @@ The local release build is intentionally unsigned. Signed release APKs are produ
 5. aligns, signs, and verifies the release APK with Android SDK tools;
 6. publishes both APKs and `SHA256SUMS.txt` to the GitHub release.
 
-Configure the signing secrets before creating a release. See [RELEASE_SETUP.md](RELEASE_SETUP.md).
+Before creating a release, configure the `PLAINCAST_KEYSTORE_BASE64`,
+`PLAINCAST_KEYSTORE_PASSWORD`, `PLAINCAST_KEY_ALIAS`, and
+`PLAINCAST_KEY_PASSWORD` GitHub Actions secrets.
 
 ## Publish 2.0.0
 
@@ -100,7 +102,9 @@ This avoids takeover races and stale media generations. All participants in one 
 
 ## Verification
 
-Before distributing a new signed APK, run the exact checklist in [RELEASE_READINESS.md](RELEASE_READINESS.md). The most important test is two Android devices plus one browser confirming:
+Before distributing a new signed APK, run the checklist in
+[docs/TEST_PLAN.md](docs/TEST_PLAN.md). The most important test is two Android
+devices plus one browser confirming:
 
 - connected ICE and peer connection states;
 - an open shared-audio data channel;
@@ -109,11 +113,14 @@ Before distributing a new signed APK, run the exact checklist in [RELEASE_READIN
 - rendered screen video;
 - repeated stop/start, lock/unlock, leave/rejoin, and reconnect behavior.
 
-More detail is available in [docs/TEST_PLAN.md](docs/TEST_PLAN.md) and [docs/DIAGNOSTICS.md](docs/DIAGNOSTICS.md).
+Use [docs/DIAGNOSTICS.md](docs/DIAGNOSTICS.md) to interpret the resulting
+connection and media metrics.
 
 ## Privacy and scope
 
-PlainCast is designed for trusted local rooms, not hostile or internet-facing deployment. Read [PRIVACY.md](PRIVACY.md), [SECURITY.md](SECURITY.md), and [docs/LIMITATIONS.md](docs/LIMITATIONS.md) before publishing or modifying it.
+PlainCast is designed for trusted local rooms, not hostile or internet-facing
+deployment. Read [docs/LIMITATIONS.md](docs/LIMITATIONS.md) before publishing or
+modifying it.
 
 ## License
 

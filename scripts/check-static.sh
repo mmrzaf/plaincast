@@ -16,12 +16,6 @@ required=(
   app/src/main/assets/browser/audio-worklet.js
   web-bridge/plaincast-https-bridge.mjs
   CHANGELOG.md
-  PRIVACY.md
-  RELEASE_NOTES.md
-  RELEASE_READINESS.md
-  RELEASE_SETUP.md
-  REVIEW_NOTES.md
-  SECURITY.md
   .github/workflows/android.yml
   .github/workflows/release.yml
   artwork/plaincast-logo-source.png
@@ -59,8 +53,8 @@ grep -q 'gradlePluginPortal()' settings.gradle.kts
 
 # Release identity, branding, and signed GitHub publication must stay consistent.
 grep -q 'PlainCast 2.0.0' README.md
-grep -q 'Room protocol: \*\*10\*\*' RELEASE_NOTES.md
-grep -q 'PlainCast-2.0.0-release.apk' RELEASE_SETUP.md
+grep -q 'PlainCast protocol 10' README.md
+grep -q 'PlainCast-2.0.0-release.apk' README.md
 grep -q 'actions/checkout@v6' .github/workflows/android.yml
 grep -q 'persist-credentials: false' .github/workflows/android.yml
 grep -q 'actions/setup-java@v5' .github/workflows/android.yml
@@ -73,11 +67,12 @@ grep -q 'gradle/actions/setup-gradle@v6' .github/workflows/release.yml
 grep -q 'actions/upload-artifact@v7' .github/workflows/release.yml
 grep -q 'gh release create' .github/workflows/release.yml
 grep -q 'gh release upload' .github/workflows/release.yml
+grep -q -- '--generate-notes' .github/workflows/release.yml
 grep -q 'apksigner.*verify' .github/workflows/release.yml
 grep -q 'zipalign.*-P 16' .github/workflows/release.yml
 grep -q 'PLAINCAST_KEYSTORE_BASE64' .github/workflows/release.yml
 grep -q 'SHA256SUMS.txt' .github/workflows/release.yml
-! grep -RInE 'protocol 9|protocol-9|versionName = "2\.1\.0"|versionCode = 10|conservative-audio-overlay|audio-stability-overlay' README.md RELEASE_*.md REVIEW_NOTES.md CHANGELOG.md docs scripts .github >/dev/null
+! grep -RInE 'protocol 9|protocol-9|versionName = "2\.1\.0"|versionCode = 10|conservative-audio-overlay|audio-stability-overlay' README.md CHANGELOG.md docs scripts .github >/dev/null
 
 python - <<'PY_RELEASE'
 from pathlib import Path
