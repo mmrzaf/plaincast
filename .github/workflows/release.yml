@@ -135,15 +135,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mapfile -t assets < <(find dist -maxdepth 1 -type f -print | sort)
-          test "${#assets[@]}" -eq 3
+          
+          VERSION_NAME="${RELEASE_TAG#v}"
+          assets=(
+            "dist/PlainCast-${VERSION_NAME}-debug.apk"
+            "dist/PlainCast-${VERSION_NAME}-release.apk"
+            "dist/SHA256SUMS.txt"
+          )
+          
+          for asset in "${assets[@]}"; do
+            test -f "$asset" || {
+              echo "Missing release asset: $asset" >&2
+              exit 1
+            }
+          done
+          
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
-            gh release edit "$RELEASE_TAG" --title "PlainCast ${RELEASE_TAG#v}" --latest
+            gh release edit "$RELEASE_TAG" \
+              --title "PlainCast ${VERSION_NAME}" \
+              --latest
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" \
               --target "$GITHUB_SHA" \
-              --title "PlainCast ${RELEASE_TAG#v}" \
+              --title "PlainCast ${VERSION_NAME}" \
               --generate-notes \
               --latest
           fi
