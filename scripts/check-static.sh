@@ -70,11 +70,11 @@ grep -q 'gh release upload' .github/workflows/release.yml
 grep -q -- '--generate-notes' .github/workflows/release.yml
 grep -q 'apksigner.*verify' .github/workflows/release.yml
 grep -q 'zipalign.*-P 16' .github/workflows/release.yml
-grep -q 'PLAINCAST_KEYSTORE_BASE64' .github/workflows/release.yml
+grep -q 'ANDROID_KEYSTORE_BASE64' .github/workflows/release.yml
 grep -q 'SHA256SUMS.txt' .github/workflows/release.yml
 ! grep -RInE 'protocol 9|protocol-9|versionName = "2\.1\.0"|versionCode = 10|conservative-audio-overlay|audio-stability-overlay' README.md CHANGELOG.md docs scripts .github >/dev/null
 
-python - <<'PY_RELEASE'
+python3 - <<'PY_RELEASE'
 from pathlib import Path
 import json
 import xml.etree.ElementTree as ET
@@ -130,7 +130,7 @@ grep -q 'heightIn(max = 520.dp).verticalScroll' app/src/main/java/com/plaincast/
 # MediaProjection acquisition happens only after foreground promotion with the projection type.
 grep -q 'ACTION_START_AUDIO' app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt
 grep -q 'FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION' app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt
-python - <<'PY'
+python3 - <<'PY'
 from pathlib import Path
 source = Path('app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt').read_text()
 start = source.index('private fun startAudioCaptureFromConsent')
