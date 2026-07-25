@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#6D49AF">
+  <meta name="color-scheme" content="dark light">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>PlainCast</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main id="app" class="app-shell">
+    <section id="joinPanel" class="join-panel">
+      <div class="join-card">
+        <div class="brand-lockup"><img src="/icon-192.png" alt="" width="52" height="52"><p class="brand">PlainCast</p></div>
+        <h1>Join audio room</h1>
+        <p class="subtle">Room <strong id="roomCode">—</strong></p>
+        <label for="displayName">Your name</label>
+        <input id="displayName" autocomplete="name" maxlength="40" placeholder="Your name">
+        <button id="joinButton" class="primary large">Join room</button>
+        <p id="joinError" class="error" role="alert"></p>
+      </div>
+    </section>
+
+    <section id="roomPanel" class="room-panel hidden" aria-live="polite">
+      <header class="topbar">
+        <div class="room-title">
+          <strong>PlainCast</strong>
+          <span id="roomStatus">Connecting…</span>
+        </div>
+        <div class="top-actions">
+          <button id="participantsButton" class="ghost"><span id="participantCount">0</span> people</button>
+          <button id="menuButton" class="icon-button" aria-label="Room menu">⋮</button>
+        </div>
+      </header>
+
+      <section id="mediaStage" class="media-stage empty">
+        <video id="screenVideo" autoplay playsinline></video>
+        <div id="stagePlaceholder" class="stage-placeholder">
+          <h2 id="stageTitle">Ready to share audio</h2>
+          <p id="stageDetail">Connected devices appear here.</p>
+        </div>
+        <button id="fullscreenButton" class="stage-action hidden">Fullscreen</button>
+      </section>
+
+      <footer class="controls">
+        <button id="talkButton" class="talk-button" disabled>HOLD TO TALK</button>
+        <div class="share-row">
+          <button id="audioShareButton" class="primary" disabled>Audio: Android Only</button>
+          <button id="videoShareButton" class="primary" disabled>Share Video</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <dialog id="participantsDialog" class="modal">
+    <div class="modal-head"><h2>Participants</h2><button data-close="participantsDialog" class="ghost">Done</button></div>
+    <ul id="participantList" class="participants"></ul>
+  </dialog>
+
+  <dialog id="settingsDialog" class="modal">
+    <div class="modal-head"><h2>Audio settings</h2><button data-close="settingsDialog" class="ghost">Done</button></div>
+    <label class="slider-row"><span>Shared audio</span><input id="audioVolume" type="range" min="0" max="100" value="100"><output id="audioVolumeValue">100%</output></label>
+    <label class="slider-row"><span>Voice</span><input id="voiceVolume" type="range" min="0" max="100" value="100"><output id="voiceVolumeValue">100%</output></label>
+    <button id="muteButton" class="secondary full">Mute all</button>
+    <p id="captureNote" class="subtle"></p>
+  </dialog>
+
+  <dialog id="diagnosticsDialog" class="modal tall">
+    <div class="modal-head"><h2>Diagnostics</h2><button data-close="diagnosticsDialog" class="ghost">Done</button></div>
+    <dl class="details-grid">
+      <dt>Room</dt><dd id="detailRoom">—</dd>
+      <dt>Browser peer</dt><dd id="detailPeer">—</dd>
+      <dt>Connection</dt><dd id="detailConnection">Offline</dd>
+      <dt>Shared-audio buffer</dt><dd id="detailAudio">Idle</dd>
+      <dt>Peer links</dt><dd id="detailPeers">0</dd>
+      <dt>Secure media capture</dt><dd id="detailSecure">—</dd>
+    </dl>
+    <button id="reconnectButton" class="secondary full">Reconnect</button>
+  </dialog>
+
+  <dialog id="menuDialog" class="modal compact-modal">
+    <button id="openParticipants" class="menu-item">Participants</button>
+    <button id="openSettings" class="menu-item">Audio settings</button>
+    <button id="openDiagnostics" class="menu-item">Diagnostics</button>
+    <button id="leaveButton" class="menu-item danger">Leave room</button>
+    <button data-close="menuDialog" class="secondary full">Cancel</button>
+  </dialog>
+
+  <div id="remoteAudioContainer" aria-hidden="true"></div>
+</body>
+</html>
