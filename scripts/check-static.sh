@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+reject_grep() {
+  local output status
+  if output="$(grep "$@")"; then
+    echo 'Unexpected forbidden text:' >&2
+    printf '%s\n' "$output" >&2
+    exit 1
+  else
+    status=$?
+    if (( status != 1 )); then
+      echo "grep failed with status $status" >&2
+      exit "$status"
+    fi
+  fi
+}
+
 required=(
   app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt
   app/src/main/java/com/plaincast/app/room/RoomController.kt
@@ -36,8 +51,8 @@ grep -q 'plaincast.audio.opus.v2' app/src/main/java/com/plaincast/app/rtc/PeerCo
 grep -q 'plaincast.audio.opus.v2' app/src/main/assets/browser/app.js
 
 # Single private-LAN product model.
-! grep -RInE 'OperatingMode|AudioTakeoverPolicy|Ride mode|ride mode|approveAudioPublisher|rejectAudioPublisher' app/src/main app/src/test README.md docs >/dev/null
-! grep -RIn 'RoomQualityProfile' app/src/main app/src/test >/dev/null
+reject_grep -RInE 'OperatingMode|AudioTakeoverPolicy|Ride mode|ride mode|approveAudioPublisher|rejectAudioPublisher' app/src/main app/src/test README.md docs
+reject_grep -RIn 'RoomQualityProfile' app/src/main app/src/test
 grep -q 'audioTargetDelayMs: Int = 60' app/src/main/java/com/plaincast/app/model/Models.kt
 grep -q 'audioMaxBufferedMs: Int = 100' app/src/main/java/com/plaincast/app/model/Models.kt
 grep -q 'AUDIO_PRIORITY_SCREEN_BITRATE_KBPS = 400' app/src/main/java/com/plaincast/app/rtc/PeerConnectionManager.kt
@@ -45,7 +60,7 @@ grep -q 'MAX_PENDING_FRAMES = 2' app/src/main/java/com/plaincast/app/audio/OpusE
 grep -q 'versionName = "2.0.0"' app/build.gradle.kts
 grep -q 'versionCode = 20000' app/build.gradle.kts
 grep -q 'distributionSha256Sum=6f74b601422d6d6fc4e1f9a1ab6522f642c2fdcbc15ae33ebd30ba3d7198e854' gradle/wrapper/gradle-wrapper.properties
-! grep -qE 'myket|devneeds|iranrepo|jamko|aliyun|jitpack|foojay-resolver-convention' settings.gradle.kts
+grep -q 'val useIranMirrors = !runningInGithubActions' settings.gradle.kts
 grep -q 'google()' settings.gradle.kts
 grep -q 'mavenCentral()' settings.gradle.kts
 grep -q 'gradlePluginPortal()' settings.gradle.kts
@@ -72,21 +87,27 @@ grep -q 'apksigner.*verify' .github/workflows/release.yml
 grep -q 'zipalign.*-P 16' .github/workflows/release.yml
 grep -q 'ANDROID_KEYSTORE_BASE64' .github/workflows/release.yml
 grep -q 'SHA256SUMS.txt' .github/workflows/release.yml
-! grep -RInE 'protocol 9|protocol-9|versionName = "2\.1\.0"|versionCode = 10|conservative-audio-overlay|audio-stability-overlay' README.md CHANGELOG.md docs scripts .github >/dev/null
+reject_grep -RInE --exclude=check-static.sh 'protocol 9|protocol-9|versionName = "2\.1\.0"|versionCode = 10|conservative-audio-overlay|audio-stability-overlay' README.md CHANGELOG.md docs scripts .github
 
-python3 - <<'PY_RELEASE'
+python3 -S - <<'PY_RELEASE'
 from pathlib import Path
 import json
+import struct
 import xml.etree.ElementTree as ET
-import yaml
-from PIL import Image
+
+def png_info(path):
+    with open(path, 'rb') as image:
+        assert image.read(8) == b'\x89PNG\r\n\x1a\n', f'{path}: not a PNG'
+        length, chunk = struct.unpack('>I4s', image.read(8))
+        assert length == 13 and chunk == b'IHDR', f'{path}: invalid PNG header'
+        width, height, bit_depth, color_type = struct.unpack('>IIBB', image.read(10))
+        return (width, height), bit_depth, color_type
 
 ET.parse('app/src/main/AndroidManifest.xml')
 for path in Path('app/src/main/res').rglob('*.xml'):
     ET.parse(path)
 for path in (Path('.github/workflows/android.yml'), Path('.github/workflows/release.yml')):
-    data = yaml.safe_load(path.read_text())
-    assert isinstance(data, dict) and 'jobs' in data
+    assert '\njobs:\n' in path.read_text(), f'{path}: missing jobs'
 manifest = json.loads(Path('app/src/main/assets/browser/manifest.webmanifest').read_text())
 assert manifest['theme_color'].lower() == '#6d49af'
 assert '<meta name="theme-color" content="#6D49AF">' in Path('app/src/main/assets/browser/index.html').read_text()
@@ -98,27 +119,36 @@ expected = {
     'docs/assets/plaincast-logo.png': (512, 512),
 }
 for path, size in expected.items():
-    image = Image.open(path)
-    assert image.size == size, (path, image.size)
+    actual_size, _, _ = png_info(path)
+    assert actual_size == size, (path, actual_size)
 for density, scale in {'mdpi':1, 'hdpi':1.5, 'xhdpi':2, 'xxhdpi':3, 'xxxhdpi':4}.items():
-    legacy = Image.open(f'app/src/main/res/mipmap-{density}/ic_launcher.png')
-    foreground = Image.open(f'app/src/main/res/mipmap-{density}/ic_launcher_foreground.png')
-    notification = Image.open(f'app/src/main/res/drawable-{density}/ic_notification.png')
-    assert legacy.size == (round(48*scale), round(48*scale))
-    assert foreground.size == (round(108*scale), round(108*scale)) and foreground.mode == 'RGBA'
-    assert notification.size == (round(24*scale), round(24*scale)) and notification.mode == 'RGBA'
-    assert foreground.getchannel('A').getbbox() is not None
-    assert notification.getchannel('A').getbbox() is not None
+    legacy, _, _ = png_info(f'app/src/main/res/mipmap-{density}/ic_launcher.png')
+    foreground, foreground_depth, foreground_color = png_info(f'app/src/main/res/mipmap-{density}/ic_launcher_foreground.png')
+    notification, notification_depth, notification_color = png_info(f'app/src/main/res/drawable-{density}/ic_notification.png')
+    assert legacy == (round(48*scale), round(48*scale))
+    assert foreground == (round(108*scale), round(108*scale))
+    assert notification == (round(24*scale), round(24*scale))
+    assert (foreground_depth, foreground_color) == (8, 6), f'{density} foreground must be RGBA'
+    assert (notification_depth, notification_color) == (8, 6), f'{density} notification must be RGBA'
 PY_RELEASE
 
 # Source packages must not contain credentials, signing keys, local paths, or build products.
-! find . -type f \( -name '*.jks' -o -name '*.keystore' -o -name '*.p12' -o -name '*.pfx' -o -name '*.apk' -o -name '*.aab' -o -name 'local.properties' \) | grep -q .
-! grep -RIlE 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AIza[0-9A-Za-z_-]{30,}|ghp_[0-9A-Za-z]{30,}' . --exclude-dir=.git | grep -q .
+if git ls-files | grep -qE '(^|/)(local\.properties|[^/]+\.(jks|keystore|p12|pfx|apk|aab))$'; then
+  echo 'Found a forbidden key, local configuration, or build product.' >&2
+  exit 1
+fi
+if git grep -IlE 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AIza[0-9A-Za-z_-]{30,}|ghp_[0-9A-Za-z]{30,}' -- . | grep -q .; then
+  echo 'Found a possible credential or private key.' >&2
+  exit 1
+fi
 
 # Fixed main surfaces; scrolling is allowed only inside dialogs/details.
 grep -q 'height: 100dvh' app/src/main/assets/browser/styles.css
 grep -q 'html, body, #app.*overflow: hidden' app/src/main/assets/browser/styles.css
-! grep -n 'RoomScreen' -A120 app/src/main/java/com/plaincast/app/ui/PlainCastRoot.kt | grep -q 'verticalScroll'
+if grep -n 'RoomScreen' -A120 app/src/main/java/com/plaincast/app/ui/PlainCastRoot.kt | grep -q 'verticalScroll'; then
+  echo 'RoomScreen must not use verticalScroll.' >&2
+  exit 1
+fi
 grep -q 'HOLD TO TALK' app/src/main/assets/browser/index.html
 grep -q 'Audio: Android Only' app/src/main/assets/browser/index.html
 grep -q 'Share Video' app/src/main/assets/browser/index.html
@@ -130,7 +160,7 @@ grep -q 'heightIn(max = 520.dp).verticalScroll' app/src/main/java/com/plaincast/
 # MediaProjection acquisition happens only after foreground promotion with the projection type.
 grep -q 'ACTION_START_AUDIO' app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt
 grep -q 'FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION' app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt
-python3 - <<'PY'
+python3 -S - <<'PY'
 from pathlib import Path
 source = Path('app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt').read_text()
 start = source.index('private fun startAudioCaptureFromConsent')
@@ -145,7 +175,7 @@ grep -q 'Prepared muted microphone sender' app/src/main/java/com/plaincast/app/r
 grep -q 'keepCommunicationRouteActive()' app/src/main/java/com/plaincast/app/room/RoomController.kt
 grep -q 'COMMUNICATION_ROUTE_GRACE_MS = 1_500L' app/src/main/java/com/plaincast/app/room/RoomController.kt
 grep -q 'if (active && !lastForegroundNeeds.microphone)' app/src/main/java/com/plaincast/app/service/PlainCastRoomService.kt
-! grep -q 'val roomAudioActive = state.lifecycle' app/src/main/java/com/plaincast/app/room/RoomController.kt
+reject_grep -n 'val roomAudioActive = state.lifecycle' app/src/main/java/com/plaincast/app/room/RoomController.kt
 
 # Shared audio uses direct packet delivery and conservative stop-before-switch authority.
 grep -q 'publisher_busy' app/src/main/java/com/plaincast/app/signaling/AudioPublisherAuthority.kt
@@ -156,11 +186,11 @@ grep -q 'markLocalAudioTransportLive' app/src/main/java/com/plaincast/app/room/R
 grep -q 'They must stop before another device can share' app/src/main/java/com/plaincast/app/room/RoomController.kt
 grep -q "case 'audio_publish_rejected'" app/src/main/assets/browser/app.js
 grep -q "'Receiving Audio'" app/src/main/assets/browser/app.js
-! grep -RInE 'audio_publish_prepare|audio_publish_ready|audio_publish_failed|audioPacketsEnabled|preparedAudioRequestId' app/src/main app/src/test >/dev/null
+reject_grep -RInE 'audio_publish_prepare|audio_publish_ready|audio_publish_failed|audioPacketsEnabled|preparedAudioRequestId' app/src/main app/src/test
 
 # Media lifecycle must be explicit, and shared-audio startup must survive pipeline cleanup.
 grep -q 'MediaLifecycle.Stopped to setOf(MediaLifecycle.Starting, MediaLifecycle.Failed)' app/src/main/java/com/plaincast/app/room/RoomStateMachine.kt
-! grep -q 'MediaLifecycle.Stopped to setOf(MediaLifecycle.Starting, MediaLifecycle.Live' app/src/main/java/com/plaincast/app/room/RoomStateMachine.kt
+reject_grep -n 'MediaLifecycle.Stopped to setOf(MediaLifecycle.Starting, MediaLifecycle.Live' app/src/main/java/com/plaincast/app/room/RoomStateMachine.kt
 grep -q 'localAudioPipelineGeneration' app/src/main/java/com/plaincast/app/room/RoomController.kt
 grep -q 'if (room.value.audioShareState != MediaLifecycle.Starting) setAudioShareState(MediaLifecycle.Starting)' app/src/main/java/com/plaincast/app/room/RoomController.kt
 grep -q 'private val remoteVideoTracks = mutableMapOf<String, VideoTrack>()' app/src/main/java/com/plaincast/app/room/RoomController.kt
@@ -169,7 +199,7 @@ grep -q 'refreshRemoteVideo()' app/src/main/java/com/plaincast/app/room/RoomCont
 # ICE candidates must wait for a remote description; flushing early breaks all media.
 grep -q 'slot == null || slot.pc.remoteDescription == null' app/src/main/java/com/plaincast/app/rtc/PeerConnectionManager.kt
 grep -q 'flushPendingIce(peerId)' app/src/main/java/com/plaincast/app/rtc/PeerConnectionManager.kt
-! grep -q 'candidates.forEach { pc.addIceCandidate(it) }' app/src/main/java/com/plaincast/app/rtc/PeerConnectionManager.kt
+reject_grep -n 'candidates.forEach { pc.addIceCandidate(it) }' app/src/main/java/com/plaincast/app/rtc/PeerConnectionManager.kt
 grep -q 'class BoundedPendingQueue' app/src/main/java/com/plaincast/app/rtc/BoundedPendingQueue.kt
 grep -q '@Volatile var ignoreOffer: Boolean = false' app/src/main/java/com/plaincast/app/rtc/PeerConnectionManager.kt
 grep -q 'if (slot?.ignoreOffer == true)' app/src/main/java/com/plaincast/app/rtc/PeerConnectionManager.kt
@@ -204,8 +234,8 @@ grep -q "document.addEventListener('pointerdown', resumeBlockedMedia" app/src/ma
 grep -q 'sendVoice: Boolean(secureCapture' app/src/main/assets/browser/app.js
 grep -q 'publishScreen: Boolean(secureCapture' app/src/main/assets/browser/app.js
 grep -q 'publishAudio: false' app/src/main/assets/browser/app.js
-! grep -q 'sharedAudioTransceiver' app/src/main/assets/browser/app.js
-! grep -q 'sharedAudioSender' app/src/main/assets/browser/app.js
+reject_grep -n 'sharedAudioTransceiver' app/src/main/assets/browser/app.js
+reject_grep -n 'sharedAudioSender' app/src/main/assets/browser/app.js
 grep -q "case 'offer': case 'answer'" app/src/main/assets/browser/app.js
 grep -q 'getUserMedia' app/src/main/assets/browser/app.js
 grep -q 'getDisplayMedia' app/src/main/assets/browser/app.js
